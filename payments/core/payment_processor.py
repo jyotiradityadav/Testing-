@@ -34,7 +34,7 @@ class PaymentRequest(BaseModel):
     customer_id: str
     metadata: Dict = Field(default_factory=dict)
     idempotency_key: Optional[str] = None
-    
+
     @validator('currency')
     def validate_currency(cls, v):
         if not v.isalpha() or not v.isupper():
@@ -73,6 +73,8 @@ class PaymentProcessor:
         - Currency conversion
         - Retry mechanism
         - Concurrent processing protection
+
+        This method is called externally by the scheduler or other clients.
         """
         try:
             # Acquire processing lock for idempotency
@@ -80,34 +82,34 @@ class PaymentProcessor:
                 payment_request.idempotency_key or payment_request.payment_method_id,
                 asyncio.Lock()
             )
-            
+
             async with lock:
                 # Rate limiting check
                 await self.rate_limiter.check_rate_limit(payment_request.customer_id)
-                
+
                 # Validate payment method
                 payment_method = await self._validate_payment_method(
                     payment_request.payment_method_id
                 )
-                
+
                 # Fraud detection
                 fraud_score = await self.fraud_detector.analyze_transaction(
                     payment_request,
                     payment_method
                 )
-                
+
                 if fraud_score > 0.8:
                     raise FraudDetectionError(
                         f"High fraud risk detected: {fraud_score}"
                     )
-                
+
                 # Currency conversion if needed
                 converted_amount = await self.currency_converter.convert(
                     payment_request.amount,
                     payment_request.currency,
                     payment_method.preferred_currency
                 )
-                
+
                 # Process payment with retry mechanism
                 for attempt in range(retry_count):
                     try:
@@ -116,7 +118,7 @@ class PaymentProcessor:
                             encrypted_data = self.encryption.encrypt_payment_data(
                                 payment_request.dict()
                             )
-                            
+
                             # Process through payment gateway
                             gateway_response = await self.payment_gateway.process(
                                 amount=converted_amount,
@@ -124,7 +126,7 @@ class PaymentProcessor:
                                 payment_method=payment_method,
                                 metadata=encrypted_data
                             )
-                            
+
                             # Create transaction record
                             transaction = Transaction(
                                 amount=payment_request.amount,
@@ -136,21 +138,32 @@ class PaymentProcessor:
                                 metadata=payment_request.metadata,
                                 fraud_score=fraud_score
                             )
-                            
+
                             self.db_session.add(transaction)
                             await self.db_session.commit()
-                            
+
+                            # Test payment status for scheduler
+                            if transaction.status.lower() not in ['success', 'completed']:
+                                logger.warning(
+                                    f"Payment was not successful: "
+                                    f"status={transaction.status}, "
+                                    f"transaction_id={transaction.gateway_transaction_id}"
+                                )
+                                raise PaymentProcessingError(f"Payment status is {transaction.status}")
+
                             return transaction
-                            
+
                     except asyncio.TimeoutError:
                         if attempt == retry_count - 1:
+                            logger.error("Payment processing timeout", exc_info=True)
                             raise PaymentGatewayError("Payment processing timeout")
                         continue
                     except Exception as e:
                         if attempt == retry_count - 1:
+                            logger.error(f"Payment processing failed on attempt {attempt+1}: {e}", exc_info=True)
                             raise PaymentProcessingError(f"Payment processing failed: {str(e)}")
                         continue
-                        
+
         except Exception as e:
             logger.error(f"Payment processing error: {str(e)}", exc_info=True)
             raise
@@ -160,10 +173,10 @@ class PaymentProcessor:
         payment_method = await self.db_session.get(PaymentMethod, payment_method_id)
         if not payment_method:
             raise InvalidPaymentMethodError(f"Payment method {payment_method_id} not found")
-        
+
         if not payment_method.is_active:
             raise InvalidPaymentMethodError(f"Payment method {payment_method_id} is inactive")
-            
+
         return payment_method
 
     async def refund_payment(
@@ -195,4 +208,4 @@ class PaymentProcessor:
     ) -> Dict:
         """Generate detailed payment reports"""
         # Implementation details for report generation
-        pass 
+        pass
