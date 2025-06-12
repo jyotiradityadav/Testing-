@@ -1,3 +1,4 @@
+```python
 from typing import Dict, List, Optional, Tuple
 import numpy as np
 from datetime import datetime, timedelta
@@ -70,12 +71,18 @@ class FraudDetector:
         """
         Analyze a transaction for potential fraud using multiple risk factors
         and machine learning model if available.
+        Also logs payment check for testing the scheduler.
         """
         try:
+            # Payment status testing and logging - for scheduler test
+            logger.info(f"[Scheduler Test] Checking payment for customer {payment_request.customer_id} "
+                        f"with idempotency_key {payment_request.idempotency_key} and amount {payment_request.amount}")
+
             # Check cache first
             cache_key = f"fraud_check:{payment_request.customer_id}:{payment_request.idempotency_key}"
             async with self._cache_lock:
                 if cache_key in self._risk_cache:
+                    logger.info(f"[Scheduler Test] Found cached risk score for {cache_key}: {self._risk_cache[cache_key]}")
                     return self._risk_cache[cache_key]
 
             # Gather risk factors
@@ -99,10 +106,15 @@ class FraudDetector:
             async with self._cache_lock:
                 self._risk_cache[cache_key] = weighted_score
 
+            logger.info(f"[Scheduler Test] Payment checked for customer {payment_request.customer_id}, "
+                        f"idempotency_key {payment_request.idempotency_key}: risk_score={weighted_score:.3f}")
+
             return weighted_score
 
         except Exception as e:
             logger.error(f"Error in fraud analysis: {str(e)}", exc_info=True)
+            logger.warning(f"[Scheduler Test] Fraud analysis failed for customer {payment_request.customer_id}, "
+                           f"idempotency_key {getattr(payment_request, 'idempotency_key', 'N/A')}")
             # Return high risk score in case of errors
             return 0.9
 
@@ -282,10 +294,10 @@ class FraudDetector:
         try:
             # Prepare features for ML model
             features = self._prepare_ml_features(payment_request, risk_scores)
-            
+
             # Get prediction from model
             prediction = self.ml_model.predict_proba([features])[0]
-            
+
             return float(prediction[1])  # Return probability of fraud
 
         except Exception as e:
@@ -336,3 +348,4 @@ class FraudDetector:
         """Calculate risk based on behavior patterns"""
         # Implementation details for behavior risk calculation
         pass 
+```
