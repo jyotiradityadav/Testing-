@@ -28,4 +28,12 @@ class CurrencyConversionError(PaymentError):
 
 class RateLimitExceededError(PaymentError):
     """Raised when rate limit is exceeded"""
-    pass 
+    pass
+
+class ScheduledPaymentError(PaymentError):
+    """Raised when a scheduled payment fails"""
+    pass
+
+class PaymentNotScheduledError(PaymentError):
+    """Raised when an operation expects a scheduled payment but none exists"""
+    pass
