@@ -1,1 +1,35 @@
-print("hello world")
+def merge_sort(arr):
+    if len(arr) <= 1:
+        return arr
+    mid = len(arr) // 2
+    left = merge_sort(arr[:mid])
+    right = merge_sort(arr[mid:])
+    return merge(left, right)
+
+def merge(left, right):
+    result = []
+    i = j = 0
+    # Merge the two lists
+    while i < len(left) and j < len(right):
+        if left[i] <= right[j]:
+            result.append(left[i])
+            i += 1
+        else:
+            result.append(right[j])
+            j += 1
+    # Append any remaining elements
+    result.extend(left[i:])
+    result.extend(right[j:])
+    return result
+
+# Test cases
+if __name__ == "__main__":
+    test_cases = [
+        [],
+        [1],
+        [5, 2, 3, 1, 4],
+        [10, -1, 2, 5, 0],
+        [9, 7, 5, 3, 1]
+    ]
+    for arr in test_cases:
+        print(f"Original: {arr} -> Sorted: {merge_sort(arr)}")
