@@ -34,4 +34,35 @@ class PaymentMethod(Base):
         self.type = type
         self.preferred_currency = preferred_currency
         self.metadata = metadata or {}
-        self.is_active = is_active 
+        self.is_active = is_active
+
+    def is_payment_method_active(self) -> bool:
+        """
+        Check if the payment method is currently active.
+        """
+        return self.is_active
+
+    def can_process_payment(self) -> bool:
+        """
+        Checks if payment method is valid and ready for payment processing.
+        Returns True if it can be used for payment, False otherwise.
+        """
+        # Add more complex checks as needed, for now just check is_active and required fields
+        required_fields = [
+            self.id,
+            self.customer_id,
+            self.gateway_token,
+            self.type,
+            self.preferred_currency
+        ]
+        if not self.is_active:
+            return False
+        if any(not field for field in required_fields):
+            return False
+        return True
+
+---
+
+This is how this task will be automated :
+- Step 1: Add methods to check if a payment method is active and can process payments, enabling testing/payment flow validation.
+- Step 2: (Optionally) Extend logic later for additional scheduler/testing purposes if needed.
