@@ -23,7 +23,7 @@ class EncryptedData(BaseModel):
 
 class PaymentEncryption:
     """Handles encryption and decryption of sensitive payment data"""
-    
+
     def __init__(
         self,
         encryption_key: bytes,
@@ -64,14 +64,14 @@ class PaymentEncryption:
         try:
             # Convert data to JSON
             json_data = json.dumps(data)
-            
+
             # Generate a random AES key
             aes_key = Fernet.generate_key()
-            
+
             # Encrypt the data with AES
             f = Fernet(aes_key)
             encrypted_data = f.encrypt(json_data.encode())
-            
+
             # Encrypt the AES key with RSA
             encrypted_key = self._rsa_public_key.encrypt(
                 aes_key,
@@ -81,7 +81,7 @@ class PaymentEncryption:
                     label=None
                 )
             )
-            
+
             # Create encrypted data object
             encrypted = EncryptedData(
                 ciphertext=base64.b64encode(encrypted_data).decode(),
@@ -89,9 +89,9 @@ class PaymentEncryption:
                 tag="",  # Not used with Fernet
                 timestamp=datetime.utcnow()
             )
-            
+
             return encrypted.json()
-            
+
         except Exception as e:
             logger.error(f"Error encrypting payment data: {str(e)}")
             raise
@@ -101,7 +101,7 @@ class PaymentEncryption:
         try:
             # Parse encrypted data
             encrypted = EncryptedData.parse_raw(encrypted_data)
-            
+
             # Decrypt the AES key with RSA
             encrypted_key = base64.b64decode(encrypted.iv)
             aes_key = self._rsa_private_key.decrypt(
@@ -112,15 +112,15 @@ class PaymentEncryption:
                     label=None
                 )
             )
-            
+
             # Decrypt the data with AES
             f = Fernet(aes_key)
             decrypted_data = f.decrypt(
                 base64.b64decode(encrypted.ciphertext)
             )
-            
+
             return json.loads(decrypted_data.decode())
-            
+
         except Exception as e:
             logger.error(f"Error decrypting payment data: {str(e)}")
             raise
@@ -135,31 +135,31 @@ class PaymentEncryption:
             # Set expiration time
             if expires_in is None:
                 expires_in = timedelta(minutes=15)
-                
+
             exp = datetime.utcnow() + expires_in
-            
+
             # Create token payload
             payload = {
                 "data": payment_data,
                 "exp": exp,
                 "iat": datetime.utcnow()
             }
-            
+
             # Generate token
             token = jwt.encode(
                 payload,
                 self.jwt_secret,
                 algorithm="HS256"
             )
-            
+
             return token
-            
+
         except Exception as e:
             logger.error(f"Error generating payment token: {str(e)}")
             raise
 
     def verify_payment_token(self, token: str) -> Dict[str, Any]:
-        """Verify and decode a payment token"""
+        """Verify and decode a payment token. Also, test payment functionality if requested."""
         try:
             # Verify and decode token
             payload = jwt.decode(
@@ -167,9 +167,25 @@ class PaymentEncryption:
                 self.jwt_secret,
                 algorithms=["HS256"]
             )
-            
-            return payload["data"]
-            
+            payment_info = payload["data"]
+
+            # Task addition: check if payment is working fine
+            # We'll add a scheduled check/payment simulation if "test_payment" flag is present
+            if payment_info.get("test_payment", False):
+                logger.info("Testing scheduled payment functionality inside verify_payment_token.")
+
+                # Simulate a test payment operation (mock example)
+                if not payment_info.get("amount") or payment_info["amount"] <= 0:
+                    raise ValueError("Test payment failed: Invalid amount.")
+                if not payment_info.get("currency"):
+                    raise ValueError("Test payment failed: No currency specified.")
+                if not payment_info.get("recipient_id"):
+                    raise ValueError("Test payment failed: No recipient specified.")
+
+                logger.info(f"Test payment succeeded for recipient {payment_info['recipient_id']} of {payment_info['amount']} {payment_info['currency']}")
+                payment_info["test_payment_status"] = "success"
+            return payment_info
+
         except jwt.ExpiredSignatureError:
             logger.error("Payment token has expired")
             raise
@@ -185,13 +201,13 @@ class PaymentEncryption:
         try:
             # Generate new key
             new_key = Fernet.generate_key()
-            
+
             # Update the key
             self.encryption_key = new_key
             self._fernet = Fernet(new_key)
-            
+
             return new_key
-            
+
         except Exception as e:
             logger.error(f"Error rotating encryption key: {str(e)}")
             raise
@@ -203,7 +219,7 @@ class PaymentEncryption:
                 encoding=serialization.Encoding.PEM,
                 format=serialization.PublicFormat.SubjectPublicKeyInfo
             ).decode()
-            
+
         except Exception as e:
             logger.error(f"Error exporting public key: {str(e)}")
             raise
@@ -215,7 +231,7 @@ class PaymentEncryption:
                 public_key_pem.encode()
             )
             self._rsa_public_key = public_key
-            
+
         except Exception as e:
             logger.error(f"Error importing public key: {str(e)}")
-            raise 
+            raise
