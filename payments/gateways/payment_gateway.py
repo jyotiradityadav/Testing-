@@ -25,7 +25,7 @@ class GatewayResponse:
 
 class PaymentGateway(ABC):
     """Abstract base class for payment gateways"""
-    
+
     @abstractmethod
     async def process(
         self,
@@ -55,9 +55,28 @@ class PaymentGateway(ABC):
         """Get the status of a transaction"""
         pass
 
+    # Added method for scheduler/payment check
+    async def check_payment(
+        self,
+        transaction_id: str
+    ) -> bool:
+        """Check if a payment is successful (for scheduler/testing)"""
+        try:
+            status_response = await self.get_transaction_status(transaction_id)
+            is_success = status_response.status.lower() in (
+                "succeeded", "settled", "approved", "completed", "paid"
+            )
+            logger.info(
+                f"Checked payment {transaction_id}: status={status_response.status}, success={is_success}"
+            )
+            return is_success
+        except Exception as e:
+            logger.error(f"Error checking payment {transaction_id}: {str(e)}")
+            return False
+
 class StripeGateway(PaymentGateway):
     """Stripe payment gateway implementation"""
-    
+
     def __init__(self, api_key: str, webhook_secret: str):
         self.api_key = api_key
         self.webhook_secret = webhook_secret
@@ -80,7 +99,7 @@ class StripeGateway(PaymentGateway):
         try:
             # Convert amount to cents/smallest currency unit
             amount_in_cents = int(amount * 100)
-            
+
             # Create payment intent
             intent = await asyncio.to_thread(
                 self._client.PaymentIntent.create,
@@ -90,17 +109,24 @@ class StripeGateway(PaymentGateway):
                 confirm=True,
                 metadata=metadata
             )
-            
+
+            # Stripe may not always include fees, handle accordingly
+            fee = Decimal(0)
+            try:
+                fee = Decimal(intent.charges.data[0].fee) / 100
+            except Exception:
+                pass
+
             return GatewayResponse(
                 transaction_id=intent.id,
                 status=intent.status,
                 amount=amount,
                 currency=currency,
-                gateway_fee=Decimal(intent.charges.data[0].fee) / 100,
+                gateway_fee=fee,
                 metadata=metadata,
                 timestamp=datetime.fromtimestamp(intent.created)
             )
-            
+
         except Exception as e:
             logger.error(f"Stripe payment processing error: {str(e)}")
             raise PaymentGatewayError(f"Stripe payment failed: {str(e)}")
@@ -116,15 +142,15 @@ class StripeGateway(PaymentGateway):
                 'payment_intent': transaction_id,
                 'reason': reason
             }
-            
+
             if amount:
                 refund_params['amount'] = int(amount * 100)
-            
+
             refund = await asyncio.to_thread(
                 self._client.Refund.create,
                 **refund_params
             )
-            
+
             return GatewayResponse(
                 transaction_id=refund.id,
                 status=refund.status,
@@ -134,7 +160,7 @@ class StripeGateway(PaymentGateway):
                 metadata={'reason': reason} if reason else {},
                 timestamp=datetime.fromtimestamp(refund.created)
             )
-            
+
         except Exception as e:
             logger.error(f"Stripe refund error: {str(e)}")
             raise PaymentGatewayError(f"Stripe refund failed: {str(e)}")
@@ -148,24 +174,30 @@ class StripeGateway(PaymentGateway):
                 self._client.PaymentIntent.retrieve,
                 transaction_id
             )
-            
+
+            fee = Decimal(0)
+            try:
+                fee = Decimal(intent.charges.data[0].fee) / 100
+            except Exception:
+                pass
+
             return GatewayResponse(
                 transaction_id=intent.id,
                 status=intent.status,
                 amount=Decimal(intent.amount) / 100,
                 currency=intent.currency.upper(),
-                gateway_fee=Decimal(intent.charges.data[0].fee) / 100,
+                gateway_fee=fee,
                 metadata=intent.metadata,
                 timestamp=datetime.fromtimestamp(intent.created)
             )
-            
+
         except Exception as e:
             logger.error(f"Stripe status check error: {str(e)}")
             raise PaymentGatewayError(f"Stripe status check failed: {str(e)}")
 
 class PayPalGateway(PaymentGateway):
     """PayPal payment gateway implementation"""
-    
+
     def __init__(self, client_id: str, client_secret: str, sandbox: bool = False):
         self.client_id = client_id
         self.client_secret = client_secret
@@ -204,7 +236,7 @@ class PayPalGateway(PaymentGateway):
                     "description": metadata.get('description', '')
                 }]
             })
-            
+
             if payment.create():
                 return GatewayResponse(
                     transaction_id=payment.id,
@@ -217,7 +249,7 @@ class PayPalGateway(PaymentGateway):
                 )
             else:
                 raise PaymentGatewayError(f"PayPal payment creation failed: {payment.error}")
-                
+
         except Exception as e:
             logger.error(f"PayPal payment processing error: {str(e)}")
             raise PaymentGatewayError(f"PayPal payment failed: {str(e)}")
@@ -230,7 +262,7 @@ class PayPalGateway(PaymentGateway):
     ) -> GatewayResponse:
         try:
             sale = self._client.Sale.find(transaction_id)
-            
+
             if amount:
                 refund = sale.refund({
                     "amount": {
@@ -240,7 +272,7 @@ class PayPalGateway(PaymentGateway):
                 })
             else:
                 refund = sale.refund({})
-                
+
             if refund.success():
                 return GatewayResponse(
                     transaction_id=refund.id,
@@ -253,7 +285,7 @@ class PayPalGateway(PaymentGateway):
                 )
             else:
                 raise PaymentGatewayError(f"PayPal refund failed: {refund.error}")
-                
+
         except Exception as e:
             logger.error(f"PayPal refund error: {str(e)}")
             raise PaymentGatewayError(f"PayPal refund failed: {str(e)}")
@@ -264,7 +296,7 @@ class PayPalGateway(PaymentGateway):
     ) -> GatewayResponse:
         try:
             payment = self._client.Payment.find(transaction_id)
-            
+
             return GatewayResponse(
                 transaction_id=payment.id,
                 status=payment.state,
@@ -274,14 +306,14 @@ class PayPalGateway(PaymentGateway):
                 metadata=payment.transactions[0].description,
                 timestamp=datetime.now()
             )
-            
+
         except Exception as e:
             logger.error(f"PayPal status check error: {str(e)}")
             raise PaymentGatewayError(f"PayPal status check failed: {str(e)}")
 
 class BraintreeGateway(PaymentGateway):
     """Braintree payment gateway implementation"""
-    
+
     def __init__(
         self,
         merchant_id: str,
@@ -327,7 +359,7 @@ class BraintreeGateway(PaymentGateway):
                     "custom_fields": metadata
                 }
             )
-            
+
             if result.is_success:
                 return GatewayResponse(
                     transaction_id=result.transaction.id,
@@ -342,7 +374,7 @@ class BraintreeGateway(PaymentGateway):
                 raise PaymentGatewayError(
                     f"Braintree payment failed: {result.message}"
                 )
-                
+
         except Exception as e:
             logger.error(f"Braintree payment processing error: {str(e)}")
             raise PaymentGatewayError(f"Braintree payment failed: {str(e)}")
@@ -365,7 +397,7 @@ class BraintreeGateway(PaymentGateway):
                     self._gateway.transaction.refund,
                     transaction_id
                 )
-                
+
             if result.is_success:
                 return GatewayResponse(
                     transaction_id=result.transaction.id,
@@ -380,7 +412,7 @@ class BraintreeGateway(PaymentGateway):
                 raise PaymentGatewayError(
                     f"Braintree refund failed: {result.message}"
                 )
-                
+
         except Exception as e:
             logger.error(f"Braintree refund error: {str(e)}")
             raise PaymentGatewayError(f"Braintree refund failed: {str(e)}")
@@ -394,7 +426,7 @@ class BraintreeGateway(PaymentGateway):
                 self._gateway.transaction.find,
                 transaction_id
             )
-            
+
             return GatewayResponse(
                 transaction_id=transaction.id,
                 status=transaction.status,
@@ -404,7 +436,7 @@ class BraintreeGateway(PaymentGateway):
                 metadata=transaction.custom_fields,
                 timestamp=transaction.created_at
             )
-            
+
         except Exception as e:
             logger.error(f"Braintree status check error: {str(e)}")
-            raise PaymentGatewayError(f"Braintree status check failed: {str(e)}") 
+            raise PaymentGatewayError(f"Braintree status check failed: {str(e)}")
