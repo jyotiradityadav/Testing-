@@ -1,21 +1,45 @@
+```python
 def merge_sort(arr):
     """
     Merge Sort implementation
     Time Complexity: O(n log n)
     Space Complexity: O(n)
-    This implementation sorts the list in place and returns None.
     """
-    if arr is None or len(arr) <= 1:
-        return
+    if len(arr) <= 1:
+        return arr
 
-    temp = [0] * len(arr)
-    _merge_sort_recursive(arr, temp, 0, len(arr) - 1)
+    # Divide the array into two halves
+    mid = len(arr) // 2
+    left = merge_sort(arr[:mid])
+    right = merge_sort(arr[mid:])
 
-def _merge_sort_recursive(arr, temp, left, right):
-    if left < right:
- 
-        print("Original array:", test_array)
-        arr = test_array.copy()
-        merge_sort(arr)
-        print("Sorted array:", arr)
-        print()
+    # Merge the two halves
+    return merge(left, right)
+
+def merge(left, right):
+    """Helper function to merge two sorted arrays"""
+    result = []
+    i = j = 0
+
+    while i < len(left) and j < len(right):
+        if left[i] <= right[j]:  # Fix: sort in ascending order
+            result.append(left[i])
+            i += 1
+        else:
+            result.append(right[j])
+            j += 1
+
+    # Add remaining elements
+    result.extend(left[i:])
+    result.extend(right[j:])
+
+    return result
+
+# Example usage
+if __name__ == "__main__":
+    # Test the merge sort
+    test_array = [64, 34, 25, 12, 22, 11, 90]
+    print("Original array:", test_array)
+    sorted_array = merge_sort(test_array)
+    print("Sorted array:", sorted_array)
+```
