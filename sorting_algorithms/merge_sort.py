@@ -1,4 +1,3 @@
-```python
 def merge_sort(arr):
     """
     Merge Sort implementation
@@ -42,4 +41,3 @@ if __name__ == "__main__":
     print("Original array:", test_array)
     sorted_array = merge_sort(test_array)
     print("Sorted array:", sorted_array)
-```
