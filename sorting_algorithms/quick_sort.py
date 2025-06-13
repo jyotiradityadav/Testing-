@@ -1,23 +1,19 @@
-def quick_sort(arr):
+def bubble_sort(arr):
     """
-    Quick Sort implementation
-    Time Complexity: O(n log n) average case, O(n^2) worst case
-    Space Complexity: O(log n)
+    Bubble Sort implementation
+    Time Complexity: O(n^2) in all cases
+    Space Complexity: O(1)
     """
-    if len(arr) <= 1:
-        return arr
-    
-    pivot = arr[len(arr) // 2]
-    left = [x for x in arr if x < pivot]
-    middle = [x for x in arr if x == pivot]
-    right = [x for x in arr if x > pivot]
-    
-    return quick_sort(left) + middle + quick_sort(right)
+    n = len(arr)
+    for i in range(n):
+        for j in range(0, n-i-1):
+            if arr[j] > arr[j+1]:
+                arr[j], arr[j+1] = arr[j+1], arr[j]
 
 # Example usage
 if __name__ == "__main__":
-    # Test the quick sort
+    # Test the bubble sort
     test_array = [64, 34, 25, 12, 22, 11, 90]
     print("Original array:", test_array)
-    sorted_array = quick_sort(test_array)
-    print("Sorted array:", sorted_array) 
+    bubble_sort(test_array)
+    print("Sorted array:", test_array)
