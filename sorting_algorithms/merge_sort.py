@@ -1,10 +1,25 @@
-def merge_sort(arr):
+def bubble_sort(arr):
     """
-    Merge Sort implementation
-    Time Complexity: O(n log n)
-    Space Complexity: O(n)
+    Bubble Sort implementation
+    Time Complexity: O(n^2)
+    Space Complexity: O(1)
     """
-    if len(arr) <= 1:
-        return arr
+    n = len(arr)
+    for i in range(n):
+        # Track if any elements were swapped in this pass
+        swapped = False
+        for j in range(0, n-i-1):
+            if arr[j] > arr[j+1]:
+                arr[j], arr[j+1] = arr[j+1], arr[j]
+                swapped = True
+        # If no elements were swapped, the array is sorted
+        if not swapped:
+            break
 
-
+# Example usage
+if __name__ == "__main__":
+    # Test the bubble sort
+    test_array = [64, 34, 25, 12, 22, 11, 90]
+    print("Original array:", test_array)
+    bubble_sort(test_array)
+    print("Sorted array:", test_array)
