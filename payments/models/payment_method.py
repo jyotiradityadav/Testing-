@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Optional
 from sqlalchemy import Column, String, Boolean, DateTime, JSON
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import declarative_base
 
 Base = declarative_base()
 
@@ -34,4 +34,4 @@ class PaymentMethod(Base):
         self.type = type
         self.preferred_currency = preferred_currency
         self.metadata = metadata or {}
-        self.is_active = is_active 
+        self.is_active = is_active
