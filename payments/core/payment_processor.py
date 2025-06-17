@@ -111,7 +111,13 @@ class PaymentProcessor:
                 # Process payment with retry mechanism
                 for attempt in range(retry_count):
                     try:
-                        async with asyncio.timeout(timeout):
+                        # Updated async timeout context for Python 3.11+
+                        try:
+                            ctx_timeout = asyncio.timeout
+                        except AttributeError:
+                            import async_timeout
+                            ctx_timeout = async_timeout.timeout
+                        async with ctx_timeout(timeout):
                             # Encrypt sensitive data
                             encrypted_data = self.encryption.encrypt_payment_data(
                                 payment_request.dict()
@@ -195,4 +201,4 @@ class PaymentProcessor:
     ) -> Dict:
         """Generate detailed payment reports"""
         # Implementation details for report generation
-        pass 
+        pass
