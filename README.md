@@ -21,4 +21,4 @@ This website is configured to be hosted on GitHub Pages. Any changes pushed to t
 - CSS3
 - JavaScript
 - Font Awesome for icons
-- Google Fonts 
+- Google Fonts
