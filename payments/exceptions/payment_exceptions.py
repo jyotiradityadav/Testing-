@@ -28,4 +28,4 @@ class CurrencyConversionError(PaymentError):
 
 class RateLimitExceededError(PaymentError):
     """Raised when rate limit is exceeded"""
-    pass 
+    pass
