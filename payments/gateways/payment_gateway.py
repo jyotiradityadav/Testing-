@@ -78,10 +78,8 @@ class StripeGateway(PaymentGateway):
         metadata: Dict
     ) -> GatewayResponse:
         try:
-            # Convert amount to cents/smallest currency unit
             amount_in_cents = int(amount * 100)
             
-            # Create payment intent
             intent = await asyncio.to_thread(
                 self._client.PaymentIntent.create,
                 amount=amount_in_cents,
@@ -90,13 +88,13 @@ class StripeGateway(PaymentGateway):
                 confirm=True,
                 metadata=metadata
             )
-            
+            fee = Decimal(intent.charges.data[0].fee) / 100 if getattr(intent.charges.data[0], 'fee', None) else Decimal(0)
             return GatewayResponse(
                 transaction_id=intent.id,
                 status=intent.status,
                 amount=amount,
                 currency=currency,
-                gateway_fee=Decimal(intent.charges.data[0].fee) / 100,
+                gateway_fee=fee,
                 metadata=metadata,
                 timestamp=datetime.fromtimestamp(intent.created)
             )
@@ -113,10 +111,10 @@ class StripeGateway(PaymentGateway):
     ) -> GatewayResponse:
         try:
             refund_params = {
-                'payment_intent': transaction_id,
-                'reason': reason
+                'payment_intent': transaction_id
             }
-            
+            if reason:
+                refund_params['reason'] = reason
             if amount:
                 refund_params['amount'] = int(amount * 100)
             
@@ -148,14 +146,14 @@ class StripeGateway(PaymentGateway):
                 self._client.PaymentIntent.retrieve,
                 transaction_id
             )
-            
+            fee = Decimal(intent.charges.data[0].fee) / 100 if getattr(intent.charges.data[0], 'fee', None) else Decimal(0)
             return GatewayResponse(
                 transaction_id=intent.id,
                 status=intent.status,
                 amount=Decimal(intent.amount) / 100,
                 currency=intent.currency.upper(),
-                gateway_fee=Decimal(intent.charges.data[0].fee) / 100,
-                metadata=intent.metadata,
+                gateway_fee=fee,
+                metadata=dict(intent.metadata) if hasattr(intent, "metadata") else {},
                 timestamp=datetime.fromtimestamp(intent.created)
             )
             
@@ -204,14 +202,13 @@ class PayPalGateway(PaymentGateway):
                     "description": metadata.get('description', '')
                 }]
             })
-            
             if payment.create():
                 return GatewayResponse(
                     transaction_id=payment.id,
                     status=payment.state,
                     amount=amount,
                     currency=currency,
-                    gateway_fee=Decimal(0),  # PayPal fees are calculated differently
+                    gateway_fee=Decimal(0),
                     metadata=metadata,
                     timestamp=datetime.now()
                 )
@@ -230,7 +227,6 @@ class PayPalGateway(PaymentGateway):
     ) -> GatewayResponse:
         try:
             sale = self._client.Sale.find(transaction_id)
-            
             if amount:
                 refund = sale.refund({
                     "amount": {
@@ -264,14 +260,14 @@ class PayPalGateway(PaymentGateway):
     ) -> GatewayResponse:
         try:
             payment = self._client.Payment.find(transaction_id)
-            
+            desc = payment.transactions[0].description if hasattr(payment.transactions[0], 'description') else ''
             return GatewayResponse(
                 transaction_id=payment.id,
                 status=payment.state,
                 amount=Decimal(payment.transactions[0].amount.total),
                 currency=payment.transactions[0].amount.currency,
                 gateway_fee=Decimal(0),
-                metadata=payment.transactions[0].description,
+                metadata={'description': desc} if desc else {},
                 timestamp=datetime.now()
             )
             
@@ -401,10 +397,10 @@ class BraintreeGateway(PaymentGateway):
                 amount=Decimal(transaction.amount),
                 currency=transaction.currency_iso_code,
                 gateway_fee=Decimal(transaction.service_fee_amount or 0),
-                metadata=transaction.custom_fields,
+                metadata=transaction.custom_fields if hasattr(transaction, "custom_fields") else {},
                 timestamp=transaction.created_at
             )
             
         except Exception as e:
             logger.error(f"Braintree status check error: {str(e)}")
-            raise PaymentGatewayError(f"Braintree status check failed: {str(e)}") 
+            raise PaymentGatewayError(f"Braintree status check failed: {str(e)}")
