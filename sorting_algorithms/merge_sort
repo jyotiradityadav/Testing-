@@ -1,1 +1,74 @@
-print("hello world")
+def merge_sort(arr):
+    """
+    Sorts an array using the merge sort algorithm.
+
+    Parameters:
+    arr (list): The list of elements to sort.
+
+    Returns:
+    list: A new sorted list.
+    """
+    if len(arr) <= 1:
+        return arr
+
+    mid = len(arr) // 2
+    left_half = merge_sort(arr[:mid])
+    right_half = merge_sort(arr[mid:])
+
+    return merge(left_half, right_half)
+
+
+def merge(left, right):
+    """
+    Merges two sorted lists into one sorted list.
+
+    Parameters:
+    left (list): Sorted left half.
+    right (list): Sorted right half.
+
+    Returns:
+    list: Merged and sorted list.
+    """
+    merged = []
+    i = j = 0
+
+    # Traverse both lists and insert smaller value from left or right into merged list
+    while i < len(left) and j < len(right):
+        if left[i] <= right[j]:
+            merged.append(left[i])
+            i += 1
+        else:
+            merged.append(right[j])
+            j += 1
+
+    # Append remaining elements from left or right, if any
+    merged.extend(left[i:])
+    merged.extend(right[j:])
+
+    return merged
+
+
+if __name__ == "__main__":
+    import unittest
+
+    class TestMergeSort(unittest.TestCase):
+        def test_empty_list(self):
+            self.assertEqual(merge_sort([]), [])
+
+        def test_single_element(self):
+            self.assertEqual(merge_sort([1]), [1])
+
+        def test_sorted_list(self):
+            self.assertEqual(merge_sort([1, 2, 3, 4, 5]), [1, 2, 3, 4, 5])
+
+        def test_reverse_sorted_list(self):
+            self.assertEqual(merge_sort([5, 4, 3, 2, 1]), [1, 2, 3, 4, 5])
+
+        def test_duplicates(self):
+            self.assertEqual(merge_sort([4, 2, 4, 3, 2]), [2, 2, 3, 4, 4])
+
+        def test_unsorted_list(self):
+            self.assertEqual(merge_sort([3, 6, 8, 10, 1, 2, 1]),
+                             [1, 1, 2, 3, 6, 8, 10])
+
+    unittest.main()
