@@ -20,4 +20,4 @@ if __name__ == "__main__":
     test_array = [64, 34, 25, 12, 22, 11, 90]
     print("Original array:", test_array)
     sorted_array = quick_sort(test_array)
-    print("Sorted array:", sorted_array) 
+    print("Sorted array:", sorted_array)
