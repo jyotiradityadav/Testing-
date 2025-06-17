@@ -41,17 +41,13 @@ class PaymentEncryption:
     def _initialize_rsa_keys(self):
         """Initialize RSA key pair for asymmetric encryption"""
         try:
-            # Generate RSA key pair
             private_key = rsa.generate_private_key(
                 public_exponent=65537,
                 key_size=2048
             )
             public_key = private_key.public_key()
-
-            # Store keys
             self._rsa_private_key = private_key
             self._rsa_public_key = public_key
-
         except Exception as e:
             logger.error(f"Error initializing RSA keys: {str(e)}")
             raise
@@ -62,17 +58,10 @@ class PaymentEncryption:
         (RSA for key exchange + AES for data encryption)
         """
         try:
-            # Convert data to JSON
             json_data = json.dumps(data)
-            
-            # Generate a random AES key
             aes_key = Fernet.generate_key()
-            
-            # Encrypt the data with AES
             f = Fernet(aes_key)
             encrypted_data = f.encrypt(json_data.encode())
-            
-            # Encrypt the AES key with RSA
             encrypted_key = self._rsa_public_key.encrypt(
                 aes_key,
                 padding.OAEP(
@@ -81,17 +70,13 @@ class PaymentEncryption:
                     label=None
                 )
             )
-            
-            # Create encrypted data object
             encrypted = EncryptedData(
                 ciphertext=base64.b64encode(encrypted_data).decode(),
                 iv=base64.b64encode(encrypted_key).decode(),
-                tag="",  # Not used with Fernet
+                tag="",
                 timestamp=datetime.utcnow()
             )
-            
             return encrypted.json()
-            
         except Exception as e:
             logger.error(f"Error encrypting payment data: {str(e)}")
             raise
@@ -99,10 +84,7 @@ class PaymentEncryption:
     def decrypt_payment_data(self, encrypted_data: str) -> Dict[str, Any]:
         """Decrypt payment data"""
         try:
-            # Parse encrypted data
             encrypted = EncryptedData.parse_raw(encrypted_data)
-            
-            # Decrypt the AES key with RSA
             encrypted_key = base64.b64decode(encrypted.iv)
             aes_key = self._rsa_private_key.decrypt(
                 encrypted_key,
@@ -112,15 +94,11 @@ class PaymentEncryption:
                     label=None
                 )
             )
-            
-            # Decrypt the data with AES
             f = Fernet(aes_key)
             decrypted_data = f.decrypt(
                 base64.b64decode(encrypted.ciphertext)
             )
-            
             return json.loads(decrypted_data.decode())
-            
         except Exception as e:
             logger.error(f"Error decrypting payment data: {str(e)}")
             raise
@@ -132,28 +110,20 @@ class PaymentEncryption:
     ) -> str:
         """Generate a JWT token for payment data"""
         try:
-            # Set expiration time
             if expires_in is None:
                 expires_in = timedelta(minutes=15)
-                
             exp = datetime.utcnow() + expires_in
-            
-            # Create token payload
             payload = {
                 "data": payment_data,
                 "exp": exp,
                 "iat": datetime.utcnow()
             }
-            
-            # Generate token
             token = jwt.encode(
                 payload,
                 self.jwt_secret,
                 algorithm="HS256"
             )
-            
             return token
-            
         except Exception as e:
             logger.error(f"Error generating payment token: {str(e)}")
             raise
@@ -161,15 +131,12 @@ class PaymentEncryption:
     def verify_payment_token(self, token: str) -> Dict[str, Any]:
         """Verify and decode a payment token"""
         try:
-            # Verify and decode token
             payload = jwt.decode(
                 token,
                 self.jwt_secret,
                 algorithms=["HS256"]
             )
-            
             return payload["data"]
-            
         except jwt.ExpiredSignatureError:
             logger.error("Payment token has expired")
             raise
@@ -183,15 +150,10 @@ class PaymentEncryption:
     def rotate_encryption_key(self) -> bytes:
         """Rotate the encryption key"""
         try:
-            # Generate new key
             new_key = Fernet.generate_key()
-            
-            # Update the key
             self.encryption_key = new_key
             self._fernet = Fernet(new_key)
-            
             return new_key
-            
         except Exception as e:
             logger.error(f"Error rotating encryption key: {str(e)}")
             raise
@@ -203,7 +165,6 @@ class PaymentEncryption:
                 encoding=serialization.Encoding.PEM,
                 format=serialization.PublicFormat.SubjectPublicKeyInfo
             ).decode()
-            
         except Exception as e:
             logger.error(f"Error exporting public key: {str(e)}")
             raise
@@ -215,7 +176,6 @@ class PaymentEncryption:
                 public_key_pem.encode()
             )
             self._rsa_public_key = public_key
-            
         except Exception as e:
             logger.error(f"Error importing public key: {str(e)}")
-            raise 
+            raise
