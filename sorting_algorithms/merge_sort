@@ -1,1 +1,43 @@
-print("hello world")
+def merge_sort(arr):
+    if len(arr) <= 1:
+        return arr
+    
+    mid = len(arr) // 2
+    left = merge_sort(arr[:mid])
+    right = merge_sort(arr[mid:])
+    
+    return merge(left, right)
+
+def merge(left, right):
+    result = []
+    i = j = 0
+    
+    while i < len(left) and j < len(right):
+        if left[i] <= right[j]:
+            result.append(left[i])
+            i += 1
+        else:
+            result.append(right[j])
+            j += 1
+    
+    result.extend(left[i:])
+    result.extend(right[j:])
+    
+    return result
+
+if __name__ == "__main__":
+    # Test cases
+    test_arrays = [
+        [64, 34, 25, 12, 22, 11, 90],
+        [5, 2, 4, 6, 1, 3],
+        [1],
+        [],
+        [3, 3, 3, 3],
+        [-1, -5, 0, 3, 2]
+    ]
+    
+    for arr in test_arrays:
+        sorted_arr = merge_sort(arr.copy())
+        print(f"Original: {arr}")
+        print(f"Sorted: {sorted_arr}")
+        print()
