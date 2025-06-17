@@ -1,1 +1,37 @@
-print("hello world")
+def selection_sort(arr):
+    """
+    Sorts a list of elements in ascending order using the selection sort algorithm.
+
+    The selection sort algorithm divides the list into two parts: the sorted and unsorted segment.
+    It repeatedly identifies the minimum element from the unsorted part and swaps it with the leftmost
+    unsorted element, moving the boundary of the sorted part one element to the right.
+
+    Time Complexity: O(n^2) where n is the number of elements in the list
+    Space Complexity: O(1) (in-place sorting)
+
+    Args:
+        arr (list): The list of elements to be sorted. Can include any orderable data type.
+
+    Returns:
+        list: The sorted list in ascending order.
+
+    Example:
+        >>> selection_sort([64, 25, 12, 22, 11])
+        [11, 12, 22, 25, 64]
+    """
+    n = len(arr)
+    for i in range(n):
+        min_idx = i
+        for j in range(i + 1, n):
+            if arr[j] < arr[min_idx]:
+                min_idx = j
+        arr[i], arr[min_idx] = arr[min_idx], arr[i]
+    return arr
+
+if __name__ == "__main__":
+    sample = [64, 34, 25, 12, 22, 11, 90]
+    print("Original array:")
+    print(sample)
+    sorted_sample = selection_sort(sample.copy())
+    print("Sorted array:")
+    print(sorted_sample)
