@@ -1,1 +1,57 @@
-print("hello world")
+def merge_sort(arr):
+    """
+    Perform merge sort on a list and return a new sorted list.
+
+    Args:
+        arr (list): The list to sort.
+
+    Returns:
+        list: Sorted list.
+    """
+    if len(arr) <= 1:
+        return arr
+
+    mid = len(arr) // 2
+    left = merge_sort(arr[:mid])
+    right = merge_sort(arr[mid:])
+
+    return _merge(left, right)
+
+def _merge(left, right):
+    """
+    Merge two sorted lists into one sorted list.
+
+    Args:
+        left (list): First sorted list.
+        right (list): Second sorted list.
+
+    Returns:
+        list: Merged and sorted list.
+    """
+    result = []
+    i = j = 0
+    while i < len(left) and j < len(right):
+        if left[i] <= right[j]:
+            result.append(left[i])
+            i += 1
+        else:
+            result.append(right[j])
+            j += 1
+    result.extend(left[i:])
+    result.extend(right[j:])
+    return result
+
+if __name__ == "__main__":
+    # Basic tests
+    def test_merge_sort():
+        assert merge_sort([]) == []
+        assert merge_sort([1]) == [1]
+        assert merge_sort([3, 1, 2]) == [1, 2, 3]
+        assert merge_sort([5, 4, 3, 2, 1]) == [1, 2, 3, 4, 5]
+        assert merge_sort([1, 2, 3, 4, 5]) == [1, 2, 3, 4, 5]
+        assert merge_sort([2, 1, 2, 1, 2]) == [1, 1, 2, 2, 2]
+        assert merge_sort([7, -3, 4, 7, 0]) == [-3, 0, 4, 7, 7]
+        assert merge_sort([9, 8, 7, 6]) == [6, 7, 8, 9]
+        assert merge_sort([1, 4, 3, 2, 2, 3, 1, 4]) == [1, 1, 2, 2, 3, 3, 4, 4]
+    test_merge_sort()
+    print("All tests passed.")
