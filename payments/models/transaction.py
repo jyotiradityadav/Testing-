@@ -40,4 +40,4 @@ class Transaction(Base):
         self.customer_id = customer_id
         self.gateway_transaction_id = gateway_transaction_id
         self.metadata = metadata or {}
-        self.fraud_score = fraud_score 
+        self.fraud_score = fraud_score
