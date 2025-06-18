@@ -90,4 +90,4 @@ const observer = new IntersectionObserver((entries, observer) => {
 // Observe all sections
 document.querySelectorAll('section').forEach(section => {
     observer.observe(section);
-}); 
+});
